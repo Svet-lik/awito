@@ -1,7 +1,7 @@
 'use strict';
 
 const dataBase = JSON.parse(localStorage.getItem('awito')) || [];
-
+let counter = dataBase.length;
 const modalAdd = document.querySelector('.modal__add'),
     addAd = document.querySelector('.add__ad'),
     modalBtnSubmit = document.querySelector('.modal__btn-submit'),
@@ -12,6 +12,9 @@ const modalAdd = document.querySelector('.modal__add'),
     modalFileInput = document.querySelector('.modal__file-input'),
     modalFileBtn = document.querySelector('.modal__file-btn'),
     modalImageAdd = document.querySelector('.modal__image-add');
+
+const searchInput = document.querySelector('.search__input'),
+    menuContainer = document.querySelector('.menu__container');
 
 const textFileBtn = modalFileBtn.textContent;
 const srcModalImage = modalImageAdd.src;
@@ -49,11 +52,11 @@ const elementModalSubmit = [...modalSubmit.elements]
     .filter(elem => elem.tagName !== 'BUTTON' && elem.type !== 'submit');
 
 /* генерация карточек */
-const renderCard = () => {
+const renderCard = (DB = dataBase) => {
     catalog.textContent = '';
-    dataBase.forEach((item, i) => {
+    DB.forEach((item) => {
         catalog.insertAdjacentHTML('beforeend', `
-                <li class="card" data-id="${i}">
+                <li class="card" data-id-item="${item.id}">
                     <img class="card__image" src="data:image/jpeg;base64,${item.image}" alt="${item.nameItem}"> 
                     <div class = "card__description">
                         <h3 class = "card__header">${item.nameItem}</h3> 
@@ -71,11 +74,23 @@ modalSubmit.addEventListener('submit', event => {
     for (const elem of elementModalSubmit) {
         itenObj[elem.name] = elem.value;
     };
+    itenObj.id = counter++;
     itenObj.image = infoFoto.base64;
     dataBase.push(itenObj);
     closeModal({ target: modalAdd });
     saveDB();
     renderCard();
+});
+
+/* поиск карточек */
+searchInput.addEventListener('input', () => {
+    const valueSearch = searchInput.value.trim().toLowerCase();
+
+    if (valueSearch.length > 2) {
+        const result = dataBase.filter(item => item.nameItem.toLowerCase().includes(valueSearch) ||
+            item.descriptionItem.toLowerCase().includes(valueSearch));
+        renderCard(result);
+    };
 });
 
 /* Загрузка объявлений */
@@ -115,6 +130,7 @@ addAd.addEventListener('click', () => {
 /*вызов модальной формы карточки товара */
 catalog.addEventListener('click', event => {
     const target = event.target;
+    const card = target.closest('.card');
 
     const modalHeaderItem = document.querySelector('.modal__header-item'),
         modalStatusItem = document.querySelector('.modal__status-item'),
@@ -122,22 +138,25 @@ catalog.addEventListener('click', event => {
         modalCostItem = document.querySelector('.modal__cost-item'),
         modalImageItem = document.querySelector('.modal__image-item');
 
-    let numberId = target.parentElement.dataset.id;
-    if (!numberId) { numberId = target.parentElement.parentElement.dataset.id; };
+    if (card) {
+        const item = dataBase.find(obj => obj.id === +card.dataset.idItem);
+        modalHeaderItem.textContent = item.nameItem;
+        modalImageItem.src = 'data:image/jpeg;base64,' + item.image;
+        modalStatusItem.textContent = item.status === 'old' ? 'б/у' : 'отличное';
+        modalDescriptionItem.textContent = item.descriptionItem;
+        modalCostItem.textContent = item.costItem + ' ₽';
 
-    if (target.closest('.card')) {
         modalItem.classList.remove('hide');
-        modalHeaderItem.textContent = dataBase[numberId].nameItem;
-        modalImageItem.src = 'data:image/jpeg;base64,' + dataBase[numberId].image;
-        if (dataBase[numberId].status === 'old') {
-            modalStatusItem.textContent = 'б/у'
-        } else {
-            modalStatusItem.textContent = 'отличное'
-        };
-        modalDescriptionItem.textContent = dataBase[numberId].descriptionItem;
-        modalCostItem.textContent = dataBase[numberId].costItem + ' ₽';
-
         document.addEventListener('keydown', closeModal);
+    }
+});
+
+/* выбор по клику в меню */
+menuContainer.addEventListener('click', event => {
+    const target = event.target;
+    if (target.tagName === 'A') {
+        let result = dataBase.filter(item => item.category === target.dataset.category);
+        renderCard(result);
     }
 });
 
